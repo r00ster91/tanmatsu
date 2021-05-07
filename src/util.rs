@@ -17,7 +17,7 @@ impl fmt::Display for Point {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Size {
     pub width: u16,
     pub height: u16,
@@ -26,6 +26,10 @@ pub struct Size {
 impl Size {
     pub fn new(width: u16, height: u16) -> Self {
         Self { width, height }
+    }
+
+    pub fn product(&self) -> u32 {
+        self.width as u32 * self.height as u32
     }
 }
 
@@ -97,13 +101,13 @@ impl Color {
 /// Tries to parse the input into an RGB color.
 /// It can parse the following RGB notations:
 ///
-/// 8-bit,       e.g. (255, 0, 0),
-/// Hexadecimal, e.g. #FF0000
+/// - [X] 8-bit,       e.g. (255, 0, 0)
+/// - [X] Hexadecimal, e.g. #FF0000
+/// - [ ] Float,       e.g. (1.0, 0.0, 0.0)
+/// - [ ] Percentage,  e.g. (100%, 0%, 0%)
 ///
-/// See https://en.wikipedia.org/wiki/RGB_color_model for more information.
-// TODO:
-// Float,       e.g. (1.0, 0.0, 0.0),
-// Percentage,  e.g. (100%, 0%, 0%),
+/// See <https://en.wikipedia.org/wiki/RGB_color_model> for more information.
+///
 pub fn parse_rgb_color(string: &str) -> Option<Color> {
     let mut r: Option<u8> = None;
     let mut g: Option<u8> = None;
