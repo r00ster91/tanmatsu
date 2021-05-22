@@ -1,5 +1,7 @@
 //! (Unfinished) terminal implementation for the Redox operating system.
 
+// TODO: if the Redox backend is to be implemented, the methods should probably be defined in a trait
+
 use std::io;
 use termion::screen;
 

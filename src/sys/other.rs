@@ -7,18 +7,18 @@ use crate::{
 };
 use crossterm::{cursor, event, style, terminal, QueueableCommand};
 
-// TODO: return result instead of unwrapping
+// TODO: return result instead of unwrapping?
 
-impl<'a> Terminal<'a> {
+impl Terminal {
     pub fn enter_alternate_dimension(&mut self) {
-        self.handle.queue(terminal::EnterAlternateScreen).unwrap();
+        self.stdout.queue(terminal::EnterAlternateScreen).unwrap();
     }
     pub fn exit_alternate_dimension(&mut self) {
-        self.handle.queue(terminal::LeaveAlternateScreen).unwrap();
+        self.stdout.queue(terminal::LeaveAlternateScreen).unwrap();
     }
 
     pub fn set_title(&mut self, title: &str) {
-        self.handle.queue(terminal::SetTitle(title)).unwrap();
+        self.stdout.queue(terminal::SetTitle(title)).unwrap();
     }
 
     pub fn enable_raw_mode(&self) {
@@ -29,20 +29,20 @@ impl<'a> Terminal<'a> {
     }
 
     pub fn enable_mouse_capture(&mut self) {
-        self.handle.queue(event::EnableMouseCapture).unwrap();
+        self.stdout.queue(event::EnableMouseCapture).unwrap();
     }
     pub fn disable_mouse_capture(&mut self) {
-        self.handle.queue(event::DisableMouseCapture).unwrap();
+        self.stdout.queue(event::DisableMouseCapture).unwrap();
     }
 
     pub fn show_cursor(&mut self) {
-        self.handle.queue(cursor::Show).unwrap();
+        self.stdout.queue(cursor::Show).unwrap();
     }
     pub fn hide_cursor(&mut self) {
-        self.handle.queue(cursor::Hide).unwrap();
+        self.stdout.queue(cursor::Hide).unwrap();
     }
 
-    /// Reads an event. It also sets the new size if the terminal has been resized.
+    /// Reads an event. It also sets the new size if the terminal has been resized, hence a mutable borrow of `self` is required.
     pub fn read_event(&mut self) -> Option<Event> {
         let crossterm_event = Terminal::read();
         let event = match crossterm_event {
@@ -147,28 +147,27 @@ impl<'a> Terminal<'a> {
     }
 
     pub fn set_cursor(&mut self, point: Point) {
-        self.handle.queue(cursor::MoveTo(point.x, point.y)).unwrap();
+        self.stdout.queue(cursor::MoveTo(point.x, point.y)).unwrap();
     }
 
     pub fn move_cursor_left(&mut self, cells: u16) {
-        self.handle.queue(cursor::MoveLeft(cells)).unwrap();
+        self.stdout.queue(cursor::MoveLeft(cells)).unwrap();
     }
     pub fn move_cursor_right(&mut self, cells: u16) {
-        self.handle.queue(cursor::MoveRight(cells)).unwrap();
+        self.stdout.queue(cursor::MoveRight(cells)).unwrap();
     }
     pub fn move_cursor_up(&mut self, cells: u16) {
-        self.handle.queue(cursor::MoveUp(cells)).unwrap();
+        self.stdout.queue(cursor::MoveUp(cells)).unwrap();
     }
     pub fn move_cursor_down(&mut self, cells: u16) {
-        self.handle.queue(cursor::MoveDown(cells)).unwrap();
+        self.stdout.queue(cursor::MoveDown(cells)).unwrap();
     }
 
-    // benchmark if implementing this without escape sequences is faster
     pub fn save_cursor_point(&mut self) {
-        self.handle.queue(cursor::SavePosition).unwrap();
+        self.stdout.queue(cursor::SavePosition).unwrap();
     }
     pub fn restore_cursor_point(&mut self) {
-        self.handle.queue(cursor::RestorePosition).unwrap();
+        self.stdout.queue(cursor::RestorePosition).unwrap();
     }
 
     pub fn save_cursor_x(&mut self) {
@@ -179,21 +178,21 @@ impl<'a> Terminal<'a> {
     }
 
     pub fn set_foreground_color(&mut self, color: Color) {
-        self.handle
+        self.stdout
             .queue(style::SetForegroundColor(Self::convert_color(color)))
             .unwrap();
     }
     pub fn set_background_color(&mut self, color: Color) {
-        self.handle
+        self.stdout
             .queue(style::SetBackgroundColor(Self::convert_color(color)))
             .unwrap();
     }
 
     pub fn enable_italic(&mut self) {
-        self.write_args(format_args!("{}", style::Attribute::Italic));
+        self.write(&format!("{}", style::Attribute::Italic));
     }
     pub fn disable_italic(&mut self) {
-        self.write_args(format_args!("{}", style::Attribute::NoItalic));
+        self.write(&format!("{}", style::Attribute::NoItalic));
     }
 
     fn convert_color(color: Color) -> style::Color {
@@ -220,17 +219,16 @@ impl<'a> Terminal<'a> {
     }
 
     pub fn reset_colors(&mut self) {
-        self.handle.queue(style::ResetColor).unwrap();
+        self.stdout.queue(style::ResetColor).unwrap();
     }
 
-    // TODO: these clear methods should probably never be needed.
     pub fn clear(&mut self) {
-        self.handle
+        self.stdout
             .queue(terminal::Clear(terminal::ClearType::All))
             .unwrap();
     }
     pub fn clear_from_cursor_to_end(&mut self) {
-        self.handle
+        self.stdout
             .queue(terminal::Clear(terminal::ClearType::FromCursorUp))
             .unwrap();
     }

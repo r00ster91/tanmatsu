@@ -43,6 +43,6 @@ pub enum KeyEvent {
 pub enum Event {
     Key(KeyEvent),
     Mouse(MouseEvent),
-    /// No `Size` is contained. Call [`crate::Terminal::size`] instead.
+    /// No `Size` included. Call [`crate::Terminal::size`] instead.
     Resize,
 }
