@@ -5,6 +5,7 @@ version = "0.1.1"
 authors = ["r00ster91 <r00ster91@protonmail.com>"]
 edition = "2018"
 license = "MIT"
+documentation = "https://docs.rs/tanmatsu"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
