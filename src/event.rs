@@ -1,6 +1,6 @@
 //! Terminal events defined specific to usage.
 
-use crate::util::{Point, };
+use crate::util::Point;
 
 #[derive(Debug)]
 pub enum MouseButton {
@@ -19,15 +19,18 @@ pub enum MouseEventKind {
     Release(MouseButton),
 }
 
+#[derive(Debug)]
 pub struct MouseEvent {
     pub kind: MouseEventKind,
     pub point: Point,
 }
 
+#[derive(Debug)]
 pub enum KeyModifier {
     Control,
 }
 
+#[derive(Debug)]
 pub enum KeyEvent {
     Up,
     Down,
@@ -40,6 +43,7 @@ pub enum KeyEvent {
     Enter,
 }
 
+#[derive(Debug)]
 pub enum Event {
     Key(KeyEvent),
     Mouse(MouseEvent),

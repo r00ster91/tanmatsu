@@ -2,6 +2,8 @@ pub mod event;
 mod sys;
 pub mod util;
 
+use crossterm::tty::IsTty;
+
 use crate::util::{Point, Size};
 use std::io::{self, Write};
 
@@ -23,31 +25,42 @@ pub struct Terminal {
 }
 
 // TODO: for better panicking: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=018af4b20094fd7ec0d4cca21d6ff2a8
+// NOTE: maybe add a panic hook (but check if there is another one already) or a Drop implementation to improve panic output
 
-impl Default for Terminal {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+#[derive(Debug)]
+#[non_exhaustive] // Prevent instantiation
+pub struct NotTTY;
 
 /// A terminal with an `io::Stdout` inside.
 ///
 /// Optimally every program should have a single instance.
 impl Terminal {
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self, NotTTY> {
+        let stdout = io::stdout();
+
+        if !stdout.is_tty() {
+            return Err(NotTTY);
+        }
+
+        Ok(Self {
             stdout: io::stdout(),
             size: Self::size(),
             #[cfg(debug_assertions)]
             flush_count: 0,
             #[cfg(debug_assertions)]
             initialized: false,
-        }
+        })
     }
 
     pub fn write(&mut self, string: &str) {
         self.stdout
             .write_all(string.as_bytes())
+            .expect("write to stdout failed");
+    }
+
+    pub fn write_bytes(&mut self, bytes: &[u8]) {
+        self.stdout
+            .write_all(bytes)
             .expect("write to stdout failed");
     }
 
