@@ -41,6 +41,7 @@ pub enum KeyEvent {
     Esc,
     Backspace(Option<KeyModifier>),
     Enter,
+    F(u8),
 }
 
 #[derive(Debug)]

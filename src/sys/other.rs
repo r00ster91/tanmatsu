@@ -6,6 +6,7 @@ use crate::{
     Terminal,
 };
 use crossterm::{cursor, event, style, terminal, QueueableCommand};
+use std::time::Duration;
 
 // TODO: return result instead of unwrapping?
 
@@ -44,7 +45,7 @@ impl Terminal {
 
     /// Reads an event. It also sets the new size if the terminal has been resized, hence a mutable borrow of `self` is required.
     pub fn read_event(&mut self) -> Option<Event> {
-        let crossterm_event = Terminal::read();
+        let crossterm_event = crossterm::event::read().unwrap();
         let event = match crossterm_event {
             event::Event::Mouse(event) => match event.kind {
                 event::MouseEventKind::Moved => Event::Mouse(MouseEvent {
@@ -136,6 +137,7 @@ impl Terminal {
                 event::KeyCode::Left => Event::Key(KeyEvent::Left(None)),
                 event::KeyCode::Right => Event::Key(KeyEvent::Right(None)),
                 event::KeyCode::Enter => Event::Key(KeyEvent::Enter),
+                event::KeyCode::F(number) => Event::Key(KeyEvent::F(number)),
                 _ => return None,
             },
             event::Event::Resize(width, height) => {
@@ -144,6 +146,14 @@ impl Terminal {
             }
         };
         Some(event)
+    }
+
+    pub fn poll_event(&mut self, timeout: Duration) -> Option<Event> {
+        if let Ok(true) = crossterm::event::poll(timeout) {
+            self.read_event()
+        } else {
+            None
+        }
     }
 
     pub fn set_cursor(&mut self, point: Point) {
@@ -236,9 +246,5 @@ impl Terminal {
     pub fn size() -> Size {
         let size = terminal::size().expect("retrieving terminal size failed");
         Size::new(size.0, size.1)
-    }
-
-    pub fn read() -> event::Event {
-        crossterm::event::read().expect("reading event failed")
     }
 }
