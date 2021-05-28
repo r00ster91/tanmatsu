@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, fmt};
 
-#[derive(Clone, Debug, Copy, PartialEq, Default)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Default, Hash)]
 pub struct Point {
     pub x: u16,
     pub y: u16,
@@ -33,7 +33,7 @@ impl Size {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum Color {
     // 4-bit colors
     DarkRed,
@@ -96,93 +96,91 @@ impl Color {
             _ => Black,
         }
     }
-}
 
-/// Tries to parse the input into an RGB color.
-/// It can parse the following RGB notations:
-///
-/// - [X] 8-bit,       e.g. (255, 0, 0)
-/// - [X] Hexadecimal, e.g. #FF0000
-/// - [ ] Float,       e.g. (1.0, 0.0, 0.0)
-/// - [ ] Percentage,  e.g. (100%, 0%, 0%)
-///
-/// See <https://en.wikipedia.org/wiki/RGB_color_model> for more information.
-///
-pub fn parse_rgb_color(string: &str) -> Option<Color> {
-    let mut r: Option<u8> = None;
-    let mut g: Option<u8> = None;
-    let mut b: Option<u8> = None;
+    /// Tries to parse the input into an RGB color.
+    /// It can parse the following RGB notations:
+    ///
+    /// - [X] 8-bit,       e.g. (255, 0, 0)
+    /// - [X] Hexadecimal, e.g. #FF0000
+    /// - [ ] Float,       e.g. (1.0, 0.0, 0.0)
+    /// - [ ] Percentage,  e.g. (100%, 0%, 0%)
+    ///
+    /// See <https://en.wikipedia.org/wiki/RGB_color_model> for more information.
+    ///
+    pub fn from_rgb(string: &str) -> Option<Color> {
+        let mut r: Option<u8> = None;
+        let mut g: Option<u8> = None;
+        let mut b: Option<u8> = None;
 
-    let mut component = &mut r;
+        let mut component = &mut r;
 
-    let mut hexdigits_in_a_row = 0;
-    let mut index = 0;
-    for char in string.chars() {
-        match char {
-            '0'..='9' => {
-                if let Some(byte) = char.to_digit(10) {
-                    *component = if let Some(component) = *component {
-                        Some(
-                            u8::try_from(component as usize * 10 + byte as usize)
-                                .unwrap_or(u8::MAX),
-                        )
-                    } else {
-                        Some(byte as u8)
+        let mut hexdigits_in_a_row = 0;
+        let mut index = 0;
+        for char in string.chars() {
+            match char {
+                '0'..='9' => {
+                    if let Some(byte) = char.to_digit(10) {
+                        *component = if let Some(component) = *component {
+                            Some(
+                                u8::try_from(component as usize * 10 + byte as usize)
+                                    .unwrap_or(u8::MAX),
+                            )
+                        } else {
+                            Some(byte as u8)
+                        };
                     };
-                };
-                hexdigits_in_a_row += 1;
+                    hexdigits_in_a_row += 1;
+                }
+                _ if char.is_ascii_hexdigit() => {
+                    if let Some(color) = Self::from_hex(&string[index..]) {
+                        return Some(color);
+                    }
+                    hexdigits_in_a_row += 1;
+                }
+                _ => {
+                    component = match (r, g, b) {
+                        (None, None, None) => &mut r,
+                        (Some(_), None, None) => &mut g,
+                        (Some(_), Some(_), None) => &mut b,
+                        (Some(r), Some(g), Some(b)) => return Some(Color::Rgb { r, g, b }),
+                        _ => unreachable!(),
+                    };
+                    hexdigits_in_a_row = 0;
+                }
             }
-            _ if char.is_ascii_hexdigit() => {
-                if let Some(color) = parse_hex(string, index) {
+
+            index += 1;
+
+            if hexdigits_in_a_row == 6 && index >= hexdigits_in_a_row {
+                if let Some(color) = Self::from_hex(&string[index - hexdigits_in_a_row..]) {
                     return Some(color);
                 }
-                hexdigits_in_a_row += 1;
-            }
-            _ => {
-                component = match (r, g, b) {
-                    (None, None, None) => &mut r,
-                    (Some(_), None, None) => &mut g,
-                    (Some(_), Some(_), None) => &mut b,
-                    (Some(r), Some(g), Some(b)) => return Some(Color::Rgb { r, g, b }),
-                    _ => unreachable!(),
-                };
-                hexdigits_in_a_row = 0;
             }
         }
 
-        index += 1;
-
-        if hexdigits_in_a_row == 6 && index >= hexdigits_in_a_row {
-            if let Some(color) = parse_hex(string, index - hexdigits_in_a_row) {
-                return Some(color);
-            }
+        match (r, g, b) {
+            (Some(r), None, None) => Some(Color::Rgb { r, g: 0, b: 0 }),
+            (Some(r), Some(g), None) => Some(Color::Rgb { r, g, b: 0 }),
+            (Some(r), Some(g), Some(b)) => Some(Color::Rgb { r, g, b }),
+            _ => None,
         }
     }
 
-    match (r, g, b) {
-        (Some(r), None, None) => Some(Color::Rgb { r, g: 0, b: 0 }),
-        (Some(r), Some(g), None) => Some(Color::Rgb { r, g, b: 0 }),
-        (Some(r), Some(g), Some(b)) => Some(Color::Rgb { r, g, b }),
-        _ => None,
-    }
-}
-
-fn parse_hex(string: &str, index: usize) -> Option<Color> {
-    if let (Some(r), Some(g), Some(b)) = (
-        &string.get(index..index + 2),
-        &string.get(index + 2..index + 4),
-        &string.get(index + 4..index + 6),
-    ) {
-        let r = u8::from_str_radix(r, 16);
-        let g = u8::from_str_radix(g, 16);
-        let b = u8::from_str_radix(b, 16);
-        if let (Ok(r), Ok(g), Ok(b)) = (r, g, b) {
-            Some(Color::Rgb { r, g, b })
+    pub fn from_hex(string: &str) -> Option<Color> {
+        if let (Some(r), Some(g), Some(b)) =
+            (&string.get(..2), &string.get(2..4), &string.get(4..6))
+        {
+            let r = u8::from_str_radix(r, 16);
+            let g = u8::from_str_radix(g, 16);
+            let b = u8::from_str_radix(b, 16);
+            if let (Ok(r), Ok(g), Ok(b)) = (r, g, b) {
+                Some(Color::Rgb { r, g, b })
+            } else {
+                None
+            }
         } else {
             None
         }
-    } else {
-        None
     }
 }
 
@@ -190,16 +188,16 @@ fn parse_hex(string: &str, index: usize) -> Option<Color> {
 mod tests {
     use super::*;
 
-    fn parse(string: &str) -> Option<Color> {
-        parse_rgb_color(string)
-    }
-
     fn rgb(r: u8, g: u8, b: u8) -> Option<Color> {
         Some(Color::Rgb { r, g, b })
     }
 
     #[test]
     fn test_parse_rgb_color() {
+        fn parse(string: &str) -> Option<Color> {
+            Color::from_rgb(string)
+        }
+
         assert_eq!(parse("255, 255, 255"), rgb(255, 255, 255));
         assert_eq!(parse("200,255,255"), rgb(200, 255, 255));
         assert_eq!(parse("-200,-255,-255"), rgb(200, 255, 255));
@@ -219,5 +217,15 @@ mod tests {
         assert_eq!(parse("123,255,100"), rgb(123, 255, 100));
         // assert_eq!(parse("255,255,255555555"), rgb(255, 255, 255));
         // assert_eq!(parse("255,255,255efefef"), rgb(255, 255, 255));
+    }
+
+    #[test]
+    fn test_parse_hex() {
+        fn parse(string: &str) -> Option<Color> {
+            Color::from_hex(string)
+        }
+
+        assert_eq!(parse("dea584"), rgb(222, 165, 132));
+        assert_eq!(parse("ff0000"), rgb(255, 0, 0));
     }
 }
