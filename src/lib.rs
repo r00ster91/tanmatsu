@@ -24,9 +24,6 @@ pub struct Terminal {
     initialized: bool,
 }
 
-// TODO: for better panicking: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=018af4b20094fd7ec0d4cca21d6ff2a8
-// NOTE: maybe add a panic hook (but check if there is another one already) or a Drop implementation to improve panic output
-
 #[derive(Debug)]
 #[non_exhaustive] // Prevent instantiation
 pub struct NotTTY;
@@ -94,12 +91,29 @@ impl Terminal {
         }
     }
 
+    fn set_panic_hook() {
+        use std::panic;
+
+        let default_panic_hook = panic::take_hook();
+
+        std::panic::set_hook(Box::new(move |panic_info| {
+            if let Ok(mut terminal) = Terminal::new() {
+                terminal.deinitialize();
+            }
+            default_panic_hook(panic_info);
+        }));
+    }
+
+    /// Makes the terminal ready for drawing and input
+    /// and registers a panic hook that makes sure [`deinitialize`] is called before the panic output.
     pub fn initialize(&mut self) {
         self.enter_alternate_dimension();
         self.enable_raw_mode();
         self.enable_mouse_capture();
         self.hide_cursor();
         self.flush();
+
+        Self::set_panic_hook();
 
         #[cfg(debug_assertions)]
         {
