@@ -114,7 +114,7 @@ impl Color {
 
         let mut component = &mut r;
 
-        let mut hexdigits_in_a_row = 0;
+        let mut digits_in_a_row = 0;
         let mut index = 0;
         for char in string.chars() {
             match char {
@@ -129,13 +129,13 @@ impl Color {
                             Some(byte as u8)
                         };
                     };
-                    hexdigits_in_a_row += 1;
+                    digits_in_a_row += 1;
                 }
                 _ if char.is_ascii_hexdigit() => {
                     if let Some(color) = Self::from_hex(&string[index..]) {
                         return Some(color);
                     }
-                    hexdigits_in_a_row += 1;
+                    digits_in_a_row += 1;
                 }
                 _ => {
                     component = match (r, g, b) {
@@ -145,14 +145,14 @@ impl Color {
                         (Some(r), Some(g), Some(b)) => return Some(Color::Rgb { r, g, b }),
                         _ => unreachable!(),
                     };
-                    hexdigits_in_a_row = 0;
+                    digits_in_a_row = 0;
                 }
             }
 
             index += 1;
 
-            if hexdigits_in_a_row == 6 && index >= hexdigits_in_a_row {
-                if let Some(color) = Self::from_hex(&string[index - hexdigits_in_a_row..]) {
+            if digits_in_a_row == 6 && index >= digits_in_a_row {
+                if let Some(color) = Self::from_hex(&string[index - digits_in_a_row..]) {
                     return Some(color);
                 }
             }
@@ -167,9 +167,7 @@ impl Color {
     }
 
     pub fn from_hex(string: &str) -> Option<Color> {
-        if let (Some(r), Some(g), Some(b)) =
-            (&string.get(..2), &string.get(2..4), &string.get(4..6))
-        {
+        if let (Some(r), Some(g), Some(b)) = (string.get(..2), string.get(2..4), string.get(4..6)) {
             let r = u8::from_str_radix(r, 16);
             let g = u8::from_str_radix(g, 16);
             let b = u8::from_str_radix(b, 16);
