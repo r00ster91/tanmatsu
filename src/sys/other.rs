@@ -198,6 +198,43 @@ impl Terminal {
             .unwrap();
     }
 
+    //
+    // TODO for the following methods: Do they work on Windows?
+    //
+
+    // Reference: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+    // NOTE: clipboard functionality can be added: https://github.com/alacritty/alacritty/blob/3e867a056018c507d79396cb5c5b4b8309c609c2/alacritty_terminal/src/ansi.rs#L440
+
+    /// Changes the terminal's foreground text color to `hex_color`.
+    ///
+    /// `hex_color` must be a hexadecimal color such as `"FF0000"`.
+    pub fn change_foreground_color(&mut self, hex_color: &str) {
+        self.write(&format!("\u{1b}]10;#{}\u{7}", hex_color));
+    }
+    pub fn reset_foreground_color(&mut self) {
+        self.write("\u{1b}]110\u{7}");
+    }
+
+    /// Changes the terminal's background text color to `hex_color`.
+    ///
+    /// `hex_color` must be a hexadecimal color such as `"FF0000"`.
+    pub fn change_background_color(&mut self, hex_color: &str) {
+        self.write(&format!("\u{1b}]11;#{}\u{7}", hex_color));
+    }
+    pub fn reset_background_color(&mut self) {
+        self.write("\u{1b}]111\u{7}");
+    }
+
+    /// Changes the terminal's cursor color to `hex_color`.
+    ///
+    /// `hex_color` must be a hexadecimal color such as `"FF0000"`.
+    pub fn change_cursor_color(&mut self, hex_color: &str) {
+        self.write(&format!("\u{1b}]12;#{}\u{7}", hex_color));
+    }
+    pub fn reset_cursor_color(&mut self) {
+        self.write(&format!("\u{1b}]112\u{7}"));
+    }
+
     pub fn enable_italic(&mut self) {
         self.write(&format!("{}", style::Attribute::Italic));
     }
