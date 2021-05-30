@@ -113,7 +113,6 @@ impl Terminal {
                 }),
             },
             event::Event::Key(event::KeyEvent { code, modifiers }) => match code {
-                event::KeyCode::Tab => Event::Key(KeyEvent::Tab),
                 event::KeyCode::Char('w') if modifiers == event::KeyModifiers::CONTROL => {
                     Event::Key(KeyEvent::Backspace(Some(KeyModifier::Control)))
                 }
@@ -124,20 +123,15 @@ impl Terminal {
                         Event::Key(KeyEvent::Char(key, None))
                     }
                 }
-                event::KeyCode::Esc => Event::Key(KeyEvent::Esc),
-                event::KeyCode::Backspace => Event::Key(KeyEvent::Backspace(None)),
-                event::KeyCode::Left if modifiers == event::KeyModifiers::CONTROL => {
-                    Event::Key(KeyEvent::Left(Some(KeyModifier::Control)))
-                }
-                event::KeyCode::Right if modifiers == event::KeyModifiers::CONTROL => {
-                    Event::Key(KeyEvent::Right(Some(KeyModifier::Control)))
-                }
+                event::KeyCode::Left => Event::Key(KeyEvent::Left),
+                event::KeyCode::Right => Event::Key(KeyEvent::Right),
                 event::KeyCode::Up => Event::Key(KeyEvent::Up),
                 event::KeyCode::Down => Event::Key(KeyEvent::Down),
-                event::KeyCode::Left => Event::Key(KeyEvent::Left(None)),
-                event::KeyCode::Right => Event::Key(KeyEvent::Right(None)),
+                event::KeyCode::Tab => Event::Key(KeyEvent::Tab),
                 event::KeyCode::Enter => Event::Key(KeyEvent::Enter),
                 event::KeyCode::F(number) => Event::Key(KeyEvent::F(number)),
+                event::KeyCode::Backspace => Event::Key(KeyEvent::Backspace(None)),
+                event::KeyCode::Esc => Event::Key(KeyEvent::Esc),
                 _ => return None,
             },
             event::Event::Resize(width, height) => {

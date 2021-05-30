@@ -34,8 +34,8 @@ pub enum KeyModifier {
 pub enum KeyEvent {
     Up,
     Down,
-    Left(Option<KeyModifier>),
-    Right(Option<KeyModifier>),
+    Left,
+    Right,
     Char(char, Option<KeyModifier>),
     Tab,
     Esc,
