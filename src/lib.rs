@@ -7,16 +7,13 @@ use crossterm::tty::IsTty;
 use crate::util::{Point, Size};
 use std::io::{self, Write};
 
-// TODO: maybe do flushing on drop
-
 // TODO: add `error` to abort program with message?
 
 // TODO: return a result instead of `expect`ing?
 
 // Once https://github.com/rust-lang/rust/pull/78515 is merged, some of this can be changed
-pub struct Terminal {
-    // This cannot be an `io::StdoutLock` and permanently lock because that doesn't work well with threads
-    pub stdout: io::Stdout,
+pub struct Terminal<'a> {
+    pub stdout: io::BufWriter<io::StdoutLock<'a>>,
     pub size: Size,
     #[cfg(debug_assertions)]
     pub flush_count: usize,
@@ -30,17 +27,18 @@ pub struct NotTTY;
 
 /// A terminal with an `io::Stdout` inside.
 ///
-/// Optimally every program should have a single instance.
-impl Terminal {
-    pub fn new() -> Result<Self, NotTTY> {
-        let stdout = io::stdout();
-
+/// Every program can have only a single instance for writing.
+/// The standard output stream is locked and no other instance can write.
+impl<'a> Terminal<'a> {
+    pub fn new(stdout: io::StdoutLock<'a>) -> Result<Self, NotTTY> {
         if !stdout.is_tty() {
             return Err(NotTTY);
         }
 
+        let writer = io::BufWriter::new(stdout);
+
         Ok(Self {
-            stdout: io::stdout(),
+            stdout: writer,
             size: Self::size(),
             #[cfg(debug_assertions)]
             flush_count: 0,
@@ -96,8 +94,9 @@ impl Terminal {
 
         let default_panic_hook = panic::take_hook();
 
-        std::panic::set_hook(Box::new(move |panic_info| {
-            if let Ok(mut terminal) = Terminal::new() {
+        panic::set_hook(Box::new(move |panic_info| {
+            let stdout = io::stdout();
+            if let Ok(mut terminal) = Terminal::new(stdout.lock()) {
                 terminal.deinitialize();
             }
             default_panic_hook(panic_info);

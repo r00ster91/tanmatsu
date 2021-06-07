@@ -1,5 +1,8 @@
+use std::io;
+
 fn main() {
-    let mut terminal = tanmatsu::Terminal::new().unwrap();
+    let stdout = io::stdout();
+    let mut terminal = tanmatsu::Terminal::new(stdout.lock()).unwrap();
 
     // This file exists for testing purposes.
 

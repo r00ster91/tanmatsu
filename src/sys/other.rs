@@ -10,7 +10,7 @@ use std::time::Duration;
 
 // TODO: return result instead of unwrapping?
 
-impl Terminal {
+impl<'a> Terminal<'a> {
     pub fn enter_alternate_dimension(&mut self) {
         self.stdout.queue(terminal::EnterAlternateScreen).unwrap();
     }
