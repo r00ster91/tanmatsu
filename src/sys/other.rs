@@ -150,21 +150,68 @@ impl<'a> Terminal<'a> {
         }
     }
 
+    /// Sets the cursor to `point`.
+    ///
+    /// If possible, try to use the `move_cursor_{}_by` and `move_cursor_{}` methods instead for single operations.
     pub fn set_cursor(&mut self, point: Point) {
         self.stdout.queue(cursor::MoveTo(point.x, point.y)).unwrap();
     }
 
-    pub fn move_cursor_left(&mut self, cells: u16) {
-        self.stdout.queue(cursor::MoveLeft(cells)).unwrap();
+    /// Sets the cursor X-coordinate to `x`.
+    pub fn set_cursor_x(&mut self, x: u16) {
+        self.stdout.queue(cursor::MoveToColumn(x)).unwrap();
     }
-    pub fn move_cursor_right(&mut self, cells: u16) {
-        self.stdout.queue(cursor::MoveRight(cells)).unwrap();
+
+    /// Sets the cursor Y-coordinate to `y`.
+    pub fn set_cursor_y(&mut self, y: u16) {
+        self.stdout.queue(cursor::MoveToRow(y)).unwrap();
     }
-    pub fn move_cursor_up(&mut self, cells: u16) {
+
+    pub fn move_cursor_up_by(&mut self, cells: u16) {
         self.stdout.queue(cursor::MoveUp(cells)).unwrap();
     }
-    pub fn move_cursor_down(&mut self, cells: u16) {
+    pub fn move_cursor_down_by(&mut self, cells: u16) {
         self.stdout.queue(cursor::MoveDown(cells)).unwrap();
+    }
+    pub fn move_cursor_left_by(&mut self, cells: u16) {
+        self.stdout.queue(cursor::MoveLeft(cells)).unwrap();
+    }
+    pub fn move_cursor_right_by(&mut self, cells: u16) {
+        self.stdout.queue(cursor::MoveRight(cells)).unwrap();
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn move_cursor_up(&mut self) {
+        self.write("\u{1b}[A");
+    }
+    #[cfg(not(target_os = "windows"))]
+    pub fn move_cursor_down(&mut self) {
+        self.write("\u{1b}[B");
+    }
+    #[cfg(not(target_os = "windows"))]
+    pub fn move_cursor_left(&mut self) {
+        self.write("\u{1b}[D");
+    }
+    #[cfg(not(target_os = "windows"))]
+    pub fn move_cursor_right(&mut self) {
+        self.write("\u{1b}[C");
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn move_cursor_up(&mut self) {
+        self.move_cursor_up_by(1);
+    }
+    #[cfg(target_os = "windows")]
+    pub fn move_cursor_down(&mut self) {
+        self.move_cursor_down_by(1);
+    }
+    #[cfg(target_os = "windows")]
+    pub fn move_cursor_left(&mut self) {
+        self.move_cursor_left_by(1);
+    }
+    #[cfg(target_os = "windows")]
+    pub fn move_cursor_right(&mut self) {
+        self.move_cursor_right_by(1);
     }
 
     pub fn save_cursor_point(&mut self) {
@@ -172,13 +219,6 @@ impl<'a> Terminal<'a> {
     }
     pub fn restore_cursor_point(&mut self) {
         self.stdout.queue(cursor::RestorePosition).unwrap();
-    }
-
-    pub fn save_cursor_x(&mut self) {
-        unimplemented!();
-    }
-    pub fn restore_cursor_y(&mut self) {
-        unimplemented!();
     }
 
     pub fn set_foreground_color(&mut self, color: Color) {
@@ -211,7 +251,7 @@ impl<'a> Terminal<'a> {
 
     /// Changes the terminal's background text color to `hex_color`.
     ///
-    /// `hex_color` must be a hexadecimal color such as `"FF0000"`.
+    /// `hex_color` must be a hexadecimal color such as `FF0000`.
     pub fn change_background_color(&mut self, hex_color: &str) {
         self.write(&format!("\u{1b}]11;#{}\u{7}", hex_color));
     }
@@ -221,12 +261,12 @@ impl<'a> Terminal<'a> {
 
     /// Changes the terminal's cursor color to `hex_color`.
     ///
-    /// `hex_color` must be a hexadecimal color such as `"FF0000"`.
+    /// `hex_color` must be a hexadecimal color such as `FF0000`.
     pub fn change_cursor_color(&mut self, hex_color: &str) {
         self.write(&format!("\u{1b}]12;#{}\u{7}", hex_color));
     }
     pub fn reset_cursor_color(&mut self) {
-        self.write(&format!("\u{1b}]112\u{7}"));
+        self.write("\u{1b}]112\u{7}");
     }
 
     pub fn enable_italic(&mut self) {
@@ -275,7 +315,7 @@ impl<'a> Terminal<'a> {
     }
 
     pub fn size() -> Size {
-        let size = terminal::size().expect("retrieving terminal size failed");
+        let size = terminal::size().unwrap();
         Size::new(size.0, size.1)
     }
 }
