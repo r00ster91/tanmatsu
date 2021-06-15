@@ -6,17 +6,12 @@ pub struct Point {
     pub y: u16,
 }
 
-impl Point {
-    pub fn new(x: u16, y: u16) -> Self {
-        Self { x, y }
-    }
-}
-
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Size {
     pub width: u16,
@@ -24,10 +19,6 @@ pub struct Size {
 }
 
 impl Size {
-    pub fn new(width: u16, height: u16) -> Self {
-        Self { width, height }
-    }
-
     pub fn product(&self) -> u32 {
         self.width as u32 * self.height as u32
     }

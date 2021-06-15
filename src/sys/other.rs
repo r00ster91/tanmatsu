@@ -10,6 +10,11 @@ use std::time::Duration;
 
 // TODO: return result instead of unwrapping?
 
+// > When I first did this, it was noticeably slower than the termion version(roughly 5-10 fps).
+// > This is because calling into the Console API that often (once per character) is going to pull down performance.
+// > Luckily, I could work around this by just checking if we were already using the color I wanted to render.
+// > If we were, I didn't set the color again.
+
 impl<'a> Terminal<'a> {
     pub fn enter_alternate_dimension(&mut self) {
         self.stdout.queue(terminal::EnterAlternateScreen).unwrap();
@@ -135,7 +140,7 @@ impl<'a> Terminal<'a> {
                 _ => return None,
             },
             event::Event::Resize(width, height) => {
-                self.size = Size::new(width, height);
+                self.size = Size { width, height };
                 Event::Resize
             }
         };
@@ -316,6 +321,9 @@ impl<'a> Terminal<'a> {
 
     pub fn size() -> Size {
         let size = terminal::size().unwrap();
-        Size::new(size.0, size.1)
+        Size {
+            width: size.0,
+            height: size.1,
+        }
     }
 }
