@@ -2,8 +2,6 @@ pub mod event;
 mod sys;
 pub mod util;
 
-use crossterm::tty::IsTty;
-
 use crate::util::{Point, Size};
 use std::io::{self, Write};
 
@@ -17,8 +15,10 @@ pub struct Terminal<'a> {
     pub size: Size,
     #[cfg(debug_assertions)]
     pub flush_count: usize,
-    #[cfg(debug_assertions)]
     initialized: bool,
+    with_mouse: bool,
+    // #[cfg(not(target = "windows"))]
+    // stdin: io::Stdin,
 }
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub struct NotTTY;
 /// The standard output stream is locked and no other instance can write.
 impl<'a> Terminal<'a> {
     pub fn new(stdout: io::StdoutLock<'a>) -> Result<Self, NotTTY> {
-        if !stdout.is_tty() {
+        if !Self::is_tty(&stdout) {
             return Err(NotTTY);
         }
 
@@ -42,25 +42,23 @@ impl<'a> Terminal<'a> {
             size: Self::size(),
             #[cfg(debug_assertions)]
             flush_count: 0,
-            #[cfg(debug_assertions)]
             initialized: false,
+            with_mouse: false
+            // #[cfg(not(target = "windows"))]
+            // stdin: io::stdin(),
         })
     }
 
     pub fn write(&mut self, string: &str) {
-        self.stdout
-            .write_all(string.as_bytes())
-            .expect("write to stdout failed");
+        self.stdout.write_all(string.as_bytes()).unwrap();
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) {
-        self.stdout
-            .write_all(bytes)
-            .expect("write to stdout failed");
+        self.stdout.write_all(bytes).unwrap();
     }
 
     pub fn flush(&mut self) {
-        self.stdout.flush().expect("flushing failed");
+        self.stdout.flush().unwrap();
 
         #[cfg(debug_assertions)]
         {
@@ -75,62 +73,62 @@ impl<'a> Terminal<'a> {
         }
     }
 
-    pub fn get_centered_border_point(&self, size: &Size) -> Point {
-        Point {
-            x: self.size.width / 2 - size.width / 2,
-            y: self.size.height / 2 - size.height / 2,
-        }
-    }
-
-    pub fn get_center(&self) -> Point {
-        Point {
-            x: self.size.width / 2,
-            y: self.size.height,
-        }
-    }
-
-    fn set_panic_hook() {
+    fn set_panic_hook(with_mouse: bool) {
         use std::panic;
 
-        let default_panic_hook = panic::take_hook();
+        let current_panic_hook = panic::take_hook();
 
         panic::set_hook(Box::new(move |panic_info| {
             let stdout = io::stdout();
-            if let Ok(mut terminal) = Terminal::new(stdout.lock()) {
-                terminal.deinitialize();
-            }
-            default_panic_hook(panic_info);
+
+            let mut terminal = Terminal::new(stdout.lock()).unwrap();
+            terminal.initialized = true;
+            terminal.with_mouse = with_mouse;
+
+            terminal.deinitialize();
+            terminal.flush(); // Flush so that we can see the following output in the normal view
+
+            current_panic_hook(panic_info);
         }));
     }
 
-    /// Makes the terminal ready for drawing and input
-    /// and registers a panic hook that makes sure [`deinitialize`] is called before the panic output.
-    pub fn initialize(&mut self) {
+    /// Makes this terminal suitable for drawing and input.
+    pub fn initialize(&mut self, title: Option<&str>, with_mouse: bool) {
         self.enter_alternate_dimension();
         self.enable_raw_mode();
-        self.enable_mouse_capture();
         self.hide_cursor();
-        self.flush();
 
-        Self::set_panic_hook();
-
-        #[cfg(debug_assertions)]
-        {
-            self.initialized = true;
+        if let Some(title) = title {
+            self.set_title(title);
         }
+
+        if with_mouse {
+            self.enable_mouse_capture();
+        }
+
+        Self::set_panic_hook(with_mouse);
+
+        self.initialized = true;
     }
 
     pub fn deinitialize(&mut self) {
-        self.show_cursor();
-        self.disable_mouse_capture();
-        self.disable_raw_mode();
-        self.exit_alternate_dimension();
-        self.flush();
-
-        #[cfg(debug_assertions)]
-        {
-            self.initialized = false;
+        if !self.initialized {
+            panic!("terminal is not initialized");
         }
+
+        self.exit_alternate_dimension();
+        self.disable_raw_mode();
+        self.show_cursor();
+
+        if self.with_mouse {
+            self.disable_mouse_capture();
+        }
+
+        self.initialized = false;
+    }
+
+    pub fn contains(&self, point: Point) -> bool {
+        point.x > 0 && point.x < self.size.width && point.y < self.size.height && point.y > 0
     }
 }
 

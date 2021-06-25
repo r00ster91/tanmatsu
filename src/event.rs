@@ -20,33 +20,44 @@ pub enum MouseEventKind {
 }
 
 #[derive(Debug)]
-pub struct MouseEvent {
-    pub kind: MouseEventKind,
-    pub point: Point,
-}
-
-#[derive(Debug)]
-pub enum KeyModifier {
-    Control,
-}
-
-#[derive(Debug)]
-pub enum KeyEvent {
+pub enum Key {
+    Char(char),
+    // Alt(char),
+    //  Ctrl(char),
     Up,
     Down,
     Left,
     Right,
-    Char(char, Option<KeyModifier>),
     Tab,
-    Esc,
-    Backspace(Option<KeyModifier>),
     Enter,
     F(u8),
+    Backspace,
+    Esc,
+}
+
+// #[derive(Debug)]
+// pub struct KeyEvent {
+//     pub key: Key,
+//     pub modifier: Option<KeyModifier>,
+// }
+
+// #[derive(Debug)]
+// pub enum KeyModifier {
+//     Shift,
+//     Control,
+//     Alt,
+// }
+
+#[derive(Debug)]
+pub struct MouseEvent {
+    pub kind: MouseEventKind,
+    pub point: Point,
+    // TODO: modifier: Option<KeyModifier> (or bitflags for multipl events)
 }
 
 #[derive(Debug)]
 pub enum Event {
-    Key(KeyEvent),
+    Key(Key),
     Mouse(MouseEvent),
     /// No `Size` included. Call [`crate::Terminal::size`] instead.
     Resize,

@@ -1,12 +1,12 @@
 //! Terminal implementation for all non-Redox operating systems.
 
 use crate::{
-    event::{Event, KeyEvent, KeyModifier, MouseButton, MouseEvent, MouseEventKind},
+    event::{Event, Key, MouseButton, MouseEvent, MouseEventKind},
     util::{Color, Point, Size},
     Terminal,
 };
-use crossterm::{cursor, event, style, terminal, QueueableCommand};
-use std::time::Duration;
+use crossterm::{cursor, event, style, terminal, tty::IsTty, QueueableCommand};
+use std::{io, time::Duration};
 
 // TODO: return result instead of unwrapping?
 
@@ -34,11 +34,14 @@ impl<'a> Terminal<'a> {
         terminal::disable_raw_mode().unwrap();
     }
 
+    // TODO: use custom escape sequence to be more specific about what mouse events exactly to take
     pub fn enable_mouse_capture(&mut self) {
         self.stdout.queue(event::EnableMouseCapture).unwrap();
+        self.with_mouse = true;
     }
     pub fn disable_mouse_capture(&mut self) {
         self.stdout.queue(event::DisableMouseCapture).unwrap();
+        self.with_mouse = false;
     }
 
     pub fn show_cursor(&mut self) {
@@ -50,101 +53,75 @@ impl<'a> Terminal<'a> {
 
     /// Reads an event. It also sets the new size if the terminal has been resized, hence a mutable borrow of `self` is required.
     pub fn read_event(&mut self) -> Option<Event> {
-        let crossterm_event = crossterm::event::read().unwrap();
-        let event = match crossterm_event {
-            event::Event::Mouse(event) => match event.kind {
-                event::MouseEventKind::Moved => Event::Mouse(MouseEvent {
-                    kind: MouseEventKind::Move,
-                    point: Point {
-                        x: event.column,
-                        y: event.row,
-                    },
-                }),
-                event::MouseEventKind::Drag(button) => {
-                    let button = match button {
-                        event::MouseButton::Left => MouseButton::Left,
-                        event::MouseButton::Middle => MouseButton::Middle,
-                        event::MouseButton::Right => MouseButton::Right,
-                    };
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::Drag(button),
-                        point: Point {
-                            x: event.column,
-                            y: event.row,
-                        },
-                    })
-                }
-                event::MouseEventKind::Down(button) => {
-                    let button = match button {
-                        event::MouseButton::Left => MouseButton::Left,
-                        event::MouseButton::Middle => MouseButton::Middle,
-                        event::MouseButton::Right => MouseButton::Right,
-                    };
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::Press(button),
-                        point: Point {
-                            x: event.column,
-                            y: event.row,
-                        },
-                    })
-                }
-                event::MouseEventKind::Up(button) => {
-                    let button = match button {
-                        event::MouseButton::Left => MouseButton::Left,
-                        event::MouseButton::Middle => MouseButton::Middle,
-                        event::MouseButton::Right => MouseButton::Right,
-                    };
-                    Event::Mouse(MouseEvent {
-                        kind: MouseEventKind::Release(button),
-                        point: Point {
-                            x: event.column,
-                            y: event.row,
-                        },
-                    })
-                }
-                event::MouseEventKind::ScrollUp => Event::Mouse(MouseEvent {
-                    kind: MouseEventKind::ScrollUp,
-                    point: Point {
-                        x: event.column,
-                        y: event.row,
-                    },
-                }),
-                event::MouseEventKind::ScrollDown => Event::Mouse(MouseEvent {
-                    kind: MouseEventKind::ScrollDown,
-                    point: Point {
-                        x: event.column,
-                        y: event.row,
-                    },
-                }),
-            },
-            event::Event::Key(event::KeyEvent { code, modifiers }) => match code {
-                event::KeyCode::Char('w') if modifiers == event::KeyModifiers::CONTROL => {
-                    Event::Key(KeyEvent::Backspace(Some(KeyModifier::Control)))
-                }
-                event::KeyCode::Char(key) => {
-                    if modifiers == event::KeyModifiers::CONTROL {
-                        Event::Key(KeyEvent::Char(key, Some(KeyModifier::Control)))
-                    } else {
-                        Event::Key(KeyEvent::Char(key, None))
+        if let Ok(crossterm_event) = event::read() {
+            let event = match crossterm_event {
+                event::Event::Mouse(event) => {
+                    fn translate_button(button: event::MouseButton) -> MouseButton {
+                        match button {
+                            event::MouseButton::Left => MouseButton::Left,
+                            event::MouseButton::Middle => MouseButton::Middle,
+                            event::MouseButton::Right => MouseButton::Right,
+                        }
                     }
+
+                    let kind = match event.kind {
+                        event::MouseEventKind::Moved => MouseEventKind::Move,
+                        event::MouseEventKind::Drag(button) => {
+                            MouseEventKind::Drag(translate_button(button))
+                        }
+                        event::MouseEventKind::Down(button) => {
+                            MouseEventKind::Press(translate_button(button))
+                        }
+                        event::MouseEventKind::Up(button) => {
+                            MouseEventKind::Release(translate_button(button))
+                        }
+                        event::MouseEventKind::ScrollUp => MouseEventKind::ScrollUp,
+                        event::MouseEventKind::ScrollDown => MouseEventKind::ScrollDown,
+                    };
+
+                    let point = Point {
+                        x: event.column,
+                        y: event.row,
+                    };
+
+                    Event::Mouse(MouseEvent { kind, point })
                 }
-                event::KeyCode::Left => Event::Key(KeyEvent::Left),
-                event::KeyCode::Right => Event::Key(KeyEvent::Right),
-                event::KeyCode::Up => Event::Key(KeyEvent::Up),
-                event::KeyCode::Down => Event::Key(KeyEvent::Down),
-                event::KeyCode::Tab => Event::Key(KeyEvent::Tab),
-                event::KeyCode::Enter => Event::Key(KeyEvent::Enter),
-                event::KeyCode::F(number) => Event::Key(KeyEvent::F(number)),
-                event::KeyCode::Backspace => Event::Key(KeyEvent::Backspace(None)),
-                event::KeyCode::Esc => Event::Key(KeyEvent::Esc),
-                _ => return None,
-            },
-            event::Event::Resize(width, height) => {
-                self.size = Size { width, height };
-                Event::Resize
-            }
-        };
-        Some(event)
+                event::Event::Key(event::KeyEvent { code, modifiers: _ }) => {
+                    let key = match code {
+                        event::KeyCode::Char(char) => Key::Char(char),
+                        event::KeyCode::Up => Key::Up,
+                        event::KeyCode::Down => Key::Down,
+                        event::KeyCode::Left => Key::Left,
+                        event::KeyCode::Right => Key::Right,
+                        event::KeyCode::Tab => Key::Tab,
+                        event::KeyCode::Enter => Key::Enter,
+                        event::KeyCode::F(number) => Key::F(number),
+                        event::KeyCode::Backspace => Key::Backspace,
+                        event::KeyCode::Esc => Key::Esc,
+                        _ => return None,
+                    };
+
+                    // let modifier = if modifiers == event::KeyModifiers::ALT {
+                    //     Some(KeyModifier::Alt)
+                    // } else if modifiers == event::KeyModifiers::CONTROL {
+                    //     Some(KeyModifier::Control)
+                    // } else if modifiers == event::KeyModifiers::SHIFT {
+                    //     Some(KeyModifier::Shift)
+                    // } else {
+                    //     None
+                    // };
+
+                    Event::Key(key)
+                }
+                event::Event::Resize(width, height) => {
+                    self.size = Size { width, height };
+                    Event::Resize
+                }
+            };
+            Some(event)
+        } else {
+            None
+        }
     }
 
     pub fn poll_event(&mut self, timeout: Duration) -> Option<Event> {
@@ -281,6 +258,21 @@ impl<'a> Terminal<'a> {
         self.write(&format!("{}", style::Attribute::NoItalic));
     }
 
+    pub fn reset_colors(&mut self) {
+        self.stdout.queue(style::ResetColor).unwrap();
+    }
+
+    pub fn clear(&mut self) {
+        self.stdout
+            .queue(terminal::Clear(terminal::ClearType::All))
+            .unwrap();
+    }
+    pub fn clear_from_cursor_to_end(&mut self) {
+        self.stdout
+            .queue(terminal::Clear(terminal::ClearType::FromCursorUp))
+            .unwrap();
+    }
+
     fn convert_color(color: Color) -> style::Color {
         match color {
             Color::Black => style::Color::Black,
@@ -304,26 +296,15 @@ impl<'a> Terminal<'a> {
         }
     }
 
-    pub fn reset_colors(&mut self) {
-        self.stdout.queue(style::ResetColor).unwrap();
-    }
-
-    pub fn clear(&mut self) {
-        self.stdout
-            .queue(terminal::Clear(terminal::ClearType::All))
-            .unwrap();
-    }
-    pub fn clear_from_cursor_to_end(&mut self) {
-        self.stdout
-            .queue(terminal::Clear(terminal::ClearType::FromCursorUp))
-            .unwrap();
-    }
-
-    pub fn size() -> Size {
+    pub(crate) fn size() -> Size {
         let size = terminal::size().unwrap();
         Size {
             width: size.0,
             height: size.1,
         }
+    }
+
+    pub(crate) fn is_tty(stdout: &io::StdoutLock) -> bool {
+        stdout.is_tty()
     }
 }
