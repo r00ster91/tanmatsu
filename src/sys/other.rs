@@ -132,6 +132,18 @@ impl<'a> Terminal<'a> {
         }
     }
 
+    /// Sets the cursor to the top left corner.
+    #[cfg(not(target_os = "windows"))]
+    pub fn reset_cursor(&mut self) {
+        self.write("\u{1b}[;H");
+    }
+
+    /// Sets the cursor to the top left corner.
+    #[cfg(target_os = "windows")]
+    pub fn reset_cursor(&mut self) {
+        self.set_cursor(Point::default());
+    }
+
     /// Sets the cursor to `point`.
     ///
     /// If possible, try to use the `move_cursor_{}_by` and `move_cursor_{}` methods instead for single operations.
