@@ -191,6 +191,15 @@ impl<'a> Terminal<'a> {
         self.write("\u{1b}[C");
     }
 
+    #[cfg(not(target_os = "windows"))]
+    pub fn next_line(&mut self) {
+        self.write("\u{1b}[E");
+    }
+    #[cfg(not(target_os = "windows"))]
+    pub fn previous_line(&mut self) {
+        self.write("\u{1b}[F");
+    }
+
     #[cfg(target_os = "windows")]
     pub fn move_cursor_up(&mut self) {
         self.move_cursor_up_by(1);
@@ -206,6 +215,15 @@ impl<'a> Terminal<'a> {
     #[cfg(target_os = "windows")]
     pub fn move_cursor_right(&mut self) {
         self.move_cursor_right_by(1);
+    }
+
+    #[cfg(target_os = "windows")]
+    pub fn next_line(&mut self) {
+        self.stdout.queue(cursor::MoveToNextLine).unwrap();
+    }
+    #[cfg(target_os = "windows")]
+    pub fn previous_line(&mut self) {
+        self.stdout.queue(cursor::MoveToPreviousLine).unwrap();
     }
 
     pub fn save_cursor_point(&mut self) {
