@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, fmt};
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Default, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash, Debug)]
 pub struct Point {
     pub x: u16,
     pub y: u16,
@@ -23,7 +23,7 @@ impl fmt::Display for Point {
     }
 }
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Hash, Debug)]
 pub struct Size {
     pub width: u16,
     pub height: u16,
@@ -34,8 +34,7 @@ impl Size {
         self.width as u32 * self.height as u32
     }
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Color {
     // 4-bit colors
     DarkRed,

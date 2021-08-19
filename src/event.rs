@@ -2,14 +2,14 @@
 
 use crate::util::Point;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum MouseButton {
     Left,
     Middle,
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum MouseEventKind {
     ScrollUp,
     ScrollDown,
@@ -19,7 +19,7 @@ pub enum MouseEventKind {
     Release(MouseButton),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Key {
     Char(char),
     // Alt(char),
@@ -48,14 +48,14 @@ pub enum Key {
 //     Alt,
 // }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MouseEvent {
     pub kind: MouseEventKind,
     pub point: Point,
     // TODO: modifier: Option<KeyModifier> (or bitflags for multipl events)
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Event {
     Key(Key),
     Mouse(MouseEvent),

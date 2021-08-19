@@ -10,6 +10,7 @@ use std::io::{self, Write};
 // TODO: return a result instead of `expect`ing?
 
 // Once https://github.com/rust-lang/rust/pull/78515 is merged, some of this can be changed
+#[derive(Debug)]
 pub struct Terminal<'a> {
     pub stdout: io::BufWriter<io::StdoutLock<'a>>,
     pub size: Size,
@@ -21,7 +22,7 @@ pub struct Terminal<'a> {
     // stdin: io::Stdin,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[non_exhaustive] // Prevent instantiation
 pub struct NotTTY;
 
@@ -93,6 +94,8 @@ impl<'a> Terminal<'a> {
     }
 
     /// Makes this terminal suitable for drawing and input.
+    ///
+    /// Note that this does not do anything until [`flush`] is used.
     pub fn initialize(&mut self, title: Option<&str>, with_mouse: bool) {
         self.enter_alternate_dimension();
         self.enable_raw_mode();
@@ -111,6 +114,9 @@ impl<'a> Terminal<'a> {
         self.initialized = true;
     }
 
+    /// Deinitializes the terminal back into its normal state.
+    ///
+    /// Note that this does not do anything until [`flush`] is used.
     pub fn deinitialize(&mut self) {
         if !self.initialized {
             panic!("terminal is not initialized");
