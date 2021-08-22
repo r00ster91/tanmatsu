@@ -34,6 +34,7 @@ impl Size {
         self.width as u32 * self.height as u32
     }
 }
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Color {
     // 4-bit colors
