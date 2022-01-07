@@ -219,11 +219,11 @@ impl<'a> Terminal<'a> {
 
     #[cfg(target_os = "windows")]
     pub fn next_line(&mut self) {
-        self.stdout.queue(cursor::MoveToNextLine).unwrap();
+        self.stdout.queue(cursor::MoveToNextLine(1)).unwrap();
     }
     #[cfg(target_os = "windows")]
     pub fn previous_line(&mut self) {
-        self.stdout.queue(cursor::MoveToPreviousLine).unwrap();
+        self.stdout.queue(cursor::MoveToPreviousLine(1)).unwrap();
     }
 
     pub fn save_cursor_point(&mut self) {
